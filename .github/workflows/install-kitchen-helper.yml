@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - "site/kitchen-assistant-local.js"
+      - "site/kitchen-chatgpt-personal-bridge.js"
       - "scripts/inject_hosted_assistant.py"
       - ".github/workflows/install-kitchen-helper.yml"
   workflow_dispatch:
@@ -16,19 +17,21 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: true
-      - name: Check local assistant JavaScript
-        run: node --check site/kitchen-assistant-local.js
-      - name: Insert assistant into HTML
+      - name: Check Kitchen Assistant JavaScript
+        run: |
+          node --check site/kitchen-assistant-local.js
+          node --check site/kitchen-chatgpt-personal-bridge.js
+      - name: Insert both assistants into HTML
         run: python3 scripts/inject_hosted_assistant.py
       - name: Commit updated website if needed
         shell: bash
         run: |
           if git diff --quiet -- site/index.html; then
-            echo "The assistant is already present."
+            echo "Both assistant scripts are already present."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add site/index.html
-          git commit -m "Enable local Kitchen Helper on hosted website"
+          git commit -m "Connect personal ChatGPT handoff to Kitchen Assistant"
           git push origin HEAD:main
