@@ -24,7 +24,7 @@ const document = {
 };
 box.appendChild = el => appended.push(el);
 const storage={getItem(){return null;},setItem(){}};
-const ctx={window:{KITCHEN_DATA:{meals:recipes,ingredients:ingredientLookup}},document,localStorage:storage,MutationObserver:class{},requestAnimationFrame:()=>{},setTimeout:()=>{},location:{hash:""}};
+const ctx={window:{KITCHEN_DATA:{meals:recipes,ingredients:ingredientLookup},addEventListener(){}},document,localStorage:storage,MutationObserver:class{},requestAnimationFrame:()=>{},setTimeout:()=>{},location:{hash:""}};
 vm.runInNewContext(assistant,ctx,{filename:"kitchen-assistant-local.js"});
 assert.equal(typeof listeners.submit,"function");
 
