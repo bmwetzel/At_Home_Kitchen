@@ -170,6 +170,9 @@ test('changing the selected recipe removes unrelated controls and restores its o
  assert.equal(form.elements.slot.value,'Breakfast');
  assert.match(area.innerHTML,/(value="soyMilk"[^>]*selected|selected[^>]*value="soyMilk")/);
  assert.match(area.innerHTML,/name="log-include-honey"[^>]*checked/);
+ form.values.slug=noodleMeal.slug;await f.change('log-slug',{value:noodleMeal.slug});
+ assert.equal(form.elements.slot.value,'Lunch');
+ assert.equal(f.elements.get('outside-category').value,'Lunches','Outside-menu category follows the newly selected menu meal');
  clean(f);
 });
 test('old schema-3 entries reload without rewritten historical nutrients',async()=>{
