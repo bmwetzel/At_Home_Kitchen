@@ -4,6 +4,7 @@ on:
     paths:
       - "site/kitchen-assistant-local.js"
       - "site/kitchen-chatgpt-personal-bridge.js"
+      - "scripts/test-hosted-assistant.js"
       - "scripts/inject_hosted_assistant.py"
       - ".github/workflows/install-kitchen-helper.yml"
   workflow_dispatch:
@@ -21,6 +22,8 @@ jobs:
         run: |
           node --check site/kitchen-assistant-local.js
           node --check site/kitchen-chatgpt-personal-bridge.js
+      - name: Test question relevance and subscription handoff
+        run: node scripts/test-hosted-assistant.js
       - name: Insert both assistants into HTML
         run: python3 scripts/inject_hosted_assistant.py
       - name: Commit updated website if needed
