@@ -1933,7 +1933,11 @@ document.addEventListener('change',e=>{
     document.getElementById('menu-log-fields').hidden=el.value!=='menu';document.getElementById('custom-log-fields').hidden=el.value==='menu';document.getElementById('log-rate-field').hidden=el.value!=='menu';
   }
   if(el.id==='log-slug'){
-    const m=bySlug[el.value];if(m){document.getElementById('log-form').elements.slot.value=slotFor(m);}
+    const m=bySlug[el.value];if(m){
+      document.getElementById('log-form').elements.slot.value=slotFor(m);
+      const outsideCategory=document.getElementById('outside-category');
+      if(outsideCategory)outsideCategory.value=m.category;
+    }
     refreshLogCustomizations();
   }
   if(el.getAttribute('data-log-custom')){
