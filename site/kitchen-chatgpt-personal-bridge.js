@@ -128,8 +128,10 @@
         status('Enter a question or choose a task above.',true);q?.focus();return;
       }
       const prompt=context();preview();
+      // Start copying while this page still has focus; opening a tab first
+      // can cause browser clipboard permissions to reject the write.
+      clipboard(prompt,()=>status((b.id==='kcp-copy-open'?'Prompt copied; ChatGPT opened.':'Prompt copied.')+' Paste with Ctrl+V or Cmd+V and send it.'));
       if(b.id==='kcp-copy-open')window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
-      clipboard(prompt,()=>status((b.id==='kcp-copy-open'?'ChatGPT opened; prompt copied.':'Prompt copied.')+' Paste with Ctrl+V or Cmd+V.'));
     }
     if(b.id==='kcp-copy-project'){
       e.preventDefault();clipboard(PROJECT,()=>status('Project instructions copied. Paste into ChatGPT Project settings.'));
