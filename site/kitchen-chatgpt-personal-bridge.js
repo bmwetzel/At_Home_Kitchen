@@ -37,7 +37,7 @@
     const el=document.getElementById('kitchen-chatgpt-personal');if(!el)return '';
     const val=id=>el.querySelector('#'+id);
     const p=get(CFG),s=get(SAVE),all=D.meals.concat(window.KITCHEN_CANDIDATES||[],Array.isArray(p.customRecipes)?p.customRecipes:[]);
-    let task=val('kcp-question').value.trim()||document.getElementById('assistant-question')?.value.trim()||PREFILL[val('kcp-task').value]||'';
+    let task=val('kcp-question').value.trim()||PREFILL[val('kcp-task').value]||'';
     const out=['I am using my personal ChatGPT subscription. This prompt was copied from At-Home Kitchen; you cannot automatically read or update that website.','',...RULES,'','MY REQUEST:',task||'Please help me choose a meal.'];
     if(Array.isArray(p.prefs?.avoid)&&p.prefs.avoid.length)out.push('Additional avoided ingredients: '+p.prefs.avoid.join(', '));
     if(val('kcp-favs').checked){
@@ -75,8 +75,8 @@
     const p=document.createElement('section');p.id='kitchen-chatgpt-personal';
     p.innerHTML=[
       '<div class="kcp-tag">PERSONAL CHATGPT • NO API KEY</div>',
-      '<h2>Ask ChatGPT about your kitchen</h2>',
-      '<p class="kcp-note">Use your own ChatGPT plan for real AI answers. The public Kitchen site cannot embed ChatGPT directly; this prepares your question and opens ChatGPT in a separate browser tab.</p>',
+      '<h2>Ask your personal ChatGPT</h2>',
+      '<p class="kcp-note">For a real AI reply, write your question below and select <strong>Copy prompt &amp; open ChatGPT</strong>. Paste the prepared text into your personal ChatGPT conversation. This public website cannot answer with the ChatGPT model directly, so it will not show generic keyword replies here.</p>',
       '<div class="kcp-grid"><div>',
       '<label for="kcp-task">Type of question</label>',
       '<select id="kcp-task"><option value="general">Ask anything</option><option value="homemade">Create a homemade recipe</option><option value="restaurant">Compare a restaurant order</option><option value="weekly">Plan a weekly refresh</option><option value="nutrition">Explain nutrition or substitutions</option><option value="shopping">Prepare a shopping list</option></select>',
@@ -93,14 +93,14 @@
       '</div></div><div class="kcp-actions">',
       '<button id="kcp-copy-open" type="button" class="button">Copy prompt &amp; open ChatGPT ↗</button>',
       '<button id="kcp-copy" type="button" class="button secondary">Copy prompt only</button></div>',
-      '<p id="kcp-status" role="status" class="kcp-note">Choose your Kitchen App Project inside ChatGPT, then paste your prepared prompt. Replies stay in ChatGPT until you bring them back.</p>',
+      '<p id="kcp-status" role="status" class="kcp-note">The button copies your question but cannot submit it for you. In the new ChatGPT tab, open your Kitchen App Project and press Ctrl+V (Windows) or Cmd+V (Mac), then send. Replies stay in ChatGPT.</p>',
       '<details><summary>Keep your Kitchen rules in a ChatGPT Project</summary>',
       '<p class="kcp-note">Open the existing Kitchen App project in ChatGPT, then Project settings → Instructions, and paste these once. Personal ChatGPT accounts can use Projects.</p>',
       '<textarea id="kcp-project-text" rows="7" readonly></textarea>',
       '<button id="kcp-copy-project" type="button" class="button secondary small">Copy Project instructions</button></details>'
     ].join('');
     const layout=form.closest('.assistant-layout');
-    if(layout)layout.insertAdjacentElement('afterend',p);else form.insertAdjacentElement('afterend',p);
+    if(layout){layout.insertAdjacentElement('afterend',p);layout.style.setProperty('display','none','important');layout.setAttribute('aria-hidden','true');}else form.insertAdjacentElement('afterend',p);
     p.querySelector('#kcp-project-text').value=PROJECT;
     preview();
   }
