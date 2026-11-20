@@ -12,7 +12,7 @@
   }
   function title(m) { return String(m.title || ""); }
   function words(q) {
-    var ignore = new Set("what should can please you for with without the from some meal meals recipes recipe make cook dinner lunch breakfast today suggest show find favorite favorites using based on want have eat quick food".split(" "));
+    var ignore = new Set("what should can please you for with without the from some meal meals recipes recipe make cook dinner lunch breakfast today suggest show find favorite favorites using based on want have eat quick food and or to do does how why are is much many my this that the tell me about".split(" "));
     return Array.from(new Set((q.toLowerCase().match(/[a-z]{3,}/g) || []).filter(x => !ignore.has(x))));
   }
   function cat(q) {
@@ -44,7 +44,7 @@
       t.forEach(w => { if (n.includes(w)) hit += 5; else if (g.includes(w)) hit += 4; else if (d.includes(w)) hit += 2; });
       return { m: m, hit: hit, score: hit + (fav.has(m.slug) ? 4 : 0) + (p.ratings && p.ratings[m.slug] && p.ratings[m.slug].value === "love" ? 3 : 0) };
     }).sort((a, b) => b.score - a.score || (a.m.totalMinutes || 90) - (b.m.totalMinutes || 90));
-    if (ranked.some(x => x.hit)) ranked = ranked.filter(x => x.hit > 0);
+    if (t.length) ranked = ranked.filter(x => x.hit > 0);
     return ranked.slice(0, 3).map(x => x.m);
   }
   function respond(q) {
@@ -68,7 +68,7 @@
     if (/vitamin|supplement|calcium|magnesium/.test(text)) return { message: "The Vitamins guide explains dietary requirements and supplement cautions. Supplements have not been shown to repair the elbow deformity.", link: "#/vitamins" };
     if (/log .*food|record .*meal/.test(text)) return { message: "Choose a recipe below to open its logging form, or record homemade and restaurant foods under Outside the menu.", link: "#/journal", items: suggest(q) };
     var results = suggest(q);
-    return { message: results.length ? "Here are matching recipes from your saved menu. Choose one to read the full instructions, log what you ate, or add ingredients to shopping. These are existing recipes, not newly generated AI meals." : "No matching recipe found within your saved restrictions. Try a different ingredient or time limit.", items: results };
+    return { message: results.length ? "This is a keyword search of your saved recipes, not a conversational AI reply. Here are menu matches for: " + q + ". Open a recipe to see the details, or use your personal ChatGPT tab for a full answer." : "I cannot answer that open-ended question using local recipe keywords. Use the personal ChatGPT handoff to send your full question to ChatGPT. I will not invent an unrelated recipe answer.", items: results };
   }
   function addMessage(role, text, items, link) {
     var box = document.getElementById("assistant-messages"); if (!box) return;
@@ -90,6 +90,14 @@
     box.appendChild(wrap); box.scrollTop = box.scrollHeight;
   }
   function ask(q) { if (!q.trim()) return; addMessage("user", q); var a = respond(q); addMessage("assistant", a.message, a.items, a.link); }
+  function handoff(q) {
+    var t = document.getElementById("kcp-question");
+    if (!t) { addMessage("assistant", "Open the personal ChatGPT panel to prepare this question."); return; }
+    t.value = q;
+    t.dispatchEvent(new Event("input", { bubbles: true }));
+    t.focus();
+    if (typeof t.scrollIntoView === "function") t.scrollIntoView({ block: "center" });
+  }
   function syncUI() {
     var status = document.querySelector(".assistant-status");
     if (status && !status.dataset.hosted) { status.textContent = "Hosted Kitchen Helper · runs inside your browser. Recipe search, meal suggestions, and journal summaries work here without an API key. Live ChatGPT is not connected to this public website."; status.dataset.hosted = "yes"; }
@@ -127,8 +135,8 @@
       if (q && navigator.clipboard) navigator.clipboard.writeText(q).then(() => addMessage("assistant", "Question copied. You can paste it into ChatGPT in another tab. No private journal data was included.")).catch(() => addMessage("assistant", "Copy is unavailable. Select the question and copy it manually."));
       return;
     }
-    if (el.dataset.k === "ai-review") { location.hash = "#/assistant"; setTimeout(() => ask("Help me with my weekly menu review"), 80); return; }
-    if (el.dataset.k === "agent-prompt") { var q = el.dataset.prompt || ""; location.hash = "#/assistant"; if (q) setTimeout(() => ask(q), 80); return; }
+    if (el.dataset.k === "ai-review") { location.hash = "#/assistant"; setTimeout(() => handoff("Help me with my weekly menu review"), 120); return; }
+    if (el.dataset.k === "agent-prompt") { var q = el.dataset.prompt || ""; location.hash = "#/assistant"; if (q) setTimeout(() => handoff(q), 120); return; }
     var slug = el.dataset.slug, act = el.dataset.hostedAction;
     if (act === "open") { location.hash = "#/meal/" + encodeURIComponent(slug); return; }
     if (act === "log") {
