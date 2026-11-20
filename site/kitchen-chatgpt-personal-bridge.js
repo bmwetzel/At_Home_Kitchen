@@ -1,9 +1,12 @@
 /* At-Home Kitchen personal ChatGPT bridge — no API keys or token sharing. */
 (() => {
   'use strict';
+  if(['127.0.0.1','localhost','[::1]'].includes(location.hostname))return;
   const D=window.KITCHEN_DATA;
   if(!D||!Array.isArray(D.meals))return;
   const CFG='at-home-kitchen:personal:v3',SAVE='at-home-kitchen:v1';
+  const DRAFT='at-home-kitchen:chatgpt-draft:v1';
+  const OPTION_IDS=['favs','journal','restaurants','menu','preferences'];
   const RULES=[
     'You are my At-Home Kitchen cooking and food-journal assistant.',
     'Never suggest seafood, fish, shellfish, broccoli, zucchini, or tofu.',
@@ -31,15 +34,42 @@
     'Favor varied, practical, Mediterranean-style eating habits without medical cure claims.',
     'This ChatGPT project is separate from the Kitchen website. Do not pretend to see the website or update its records unless I provide data and have authorized an integration.'
   ].join('\n');
+  function loadDraft(){
+    const empty={task:'general',question:'',options:{}};
+    try{
+      const value=JSON.parse(sessionStorage.getItem(DRAFT)||'null');
+      if(!value||typeof value!=='object')return empty;
+      return {task:Object.hasOwn(PREFILL,value.task)?value.task:'general',
+        question:typeof value.question==='string'?value.question:'',
+        options:Object.fromEntries(OPTION_IDS.map(id=>[id,value.options?.[id]===true]))};
+    }catch(_){return empty;}
+  }
+  let draft=loadDraft();
+  function saveDraft(){try{sessionStorage.setItem(DRAFT,JSON.stringify(draft));}catch(_){/* The current draft still works when browser storage is unavailable. */}}
+  function readDraft(){
+    const p=document.getElementById('kitchen-chatgpt-personal');if(!p)return;
+    draft={task:p.querySelector('#kcp-task').value,question:p.querySelector('#kcp-question').value,
+      options:Object.fromEntries(OPTION_IDS.map(id=>[id,p.querySelector('#kcp-'+id)?.checked===true]))};
+    saveDraft();
+  }
+  function restoreDraft(p){
+    p.querySelector('#kcp-task').value=draft.task;
+    p.querySelector('#kcp-question').value=draft.question;
+    OPTION_IDS.forEach(id=>{const input=p.querySelector('#kcp-'+id);if(input)input.checked=draft.options[id]===true;});
+  }
   const get=k=>{try{return JSON.parse(localStorage.getItem(k)||'{}')||{};}catch(_){return {};}};
   function mealName(slug,all){const m=all.find(x=>x.slug===slug);return m?m.title:String(slug);}
   function context(){
     const el=document.getElementById('kitchen-chatgpt-personal');if(!el)return '';
     const val=id=>el.querySelector('#'+id);
     const p=get(CFG),s=get(SAVE),all=D.meals.concat(window.KITCHEN_CANDIDATES||[],Array.isArray(p.customRecipes)?p.customRecipes:[]);
-    let task=val('kcp-question').value.trim()||PREFILL[val('kcp-task').value]||'';
-    const out=['I am using my personal ChatGPT subscription. This prompt was copied from At-Home Kitchen; you cannot automatically read or update that website.','',...RULES,'','MY REQUEST:',task||'Please help me choose a meal.'];
-    if(Array.isArray(p.prefs?.avoid)&&p.prefs.avoid.length)out.push('Additional avoided ingredients: '+p.prefs.avoid.join(', '));
+    // Keep the submitted wording, spacing and line breaks exactly as written.
+    const question=val('kcp-question').value;
+    const task=question.trim()?question:PREFILL[val('kcp-task').value]||'';
+    const out=['I am using my personal ChatGPT subscription. This prompt was copied from At-Home Kitchen; you cannot automatically read or update that website.','',...RULES,''];
+    if(val('kcp-task').value!=='general')out.push('TASK:',PREFILL[val('kcp-task').value]||'','');
+    out.push('MY REQUEST:',task||'Please help me choose a meal.');
+    if(val('kcp-preferences').checked&&Array.isArray(p.prefs?.avoid)&&p.prefs.avoid.length)out.push('Additional avoided ingredients: '+p.prefs.avoid.join(', '));
     if(val('kcp-favs').checked){
       const fav=Array.isArray(s.favorites)?s.favorites.slice(0,25):[];
       const ratings=Object.entries(p.ratings||{}).slice(0,30).map(([slug,r])=>mealName(slug,all)+': '+(typeof r==='string'?r:r?.value||'unrated'));
@@ -58,7 +88,7 @@
       out.push('','ACTIVE MENU TITLES:',all.filter(m=>active.has(m.slug)).slice(0,100).map(m=>m.category+': '+m.title).join('\n'));
     }
     out.push('','Answer clearly. For facts about real restaurants, use official menu sources if available. Nutrition estimates are not laboratory measurements.');
-    return out.join('\n').slice(0,30000);
+    return out.join('\n');
   }
   function status(msg,err=false){const x=document.getElementById('kcp-status');if(x){x.textContent=msg;x.style.color=err?'#a3203b':'#236b56';}}
   function preview(){const x=document.getElementById('kcp-preview');if(x)x.value=context();}
@@ -74,25 +104,27 @@
     css();
     const p=document.createElement('section');p.id='kitchen-chatgpt-personal';
     p.innerHTML=[
-      '<div class="kcp-tag">PERSONAL CHATGPT • NO API KEY</div>',
-      '<h2>Ask your personal ChatGPT</h2>',
-      '<p class="kcp-note">For a real AI reply, write your question below and select <strong>Copy prompt &amp; open ChatGPT</strong>. Paste the prepared text into your personal ChatGPT conversation. This public website cannot answer with the ChatGPT model directly, so it will not show generic keyword replies here.</p>',
+      '<div class="kcp-tag">CHATGPT HANDOFF</div>',
+      '<h2>ChatGPT is not connected to this website</h2>',
+      '<p class="kcp-note">You can prepare a question here and copy it into your personal ChatGPT conversation. <strong>Answers appear in ChatGPT, not inside this website.</strong> Your draft stays in this browser tab when you change pages or reload. This handoff does not use API credits or send anything automatically.</p>',
       '<div class="kcp-grid"><div>',
       '<label for="kcp-task">Type of question</label>',
       '<select id="kcp-task"><option value="general">Ask anything</option><option value="homemade">Create a homemade recipe</option><option value="restaurant">Compare a restaurant order</option><option value="weekly">Plan a weekly refresh</option><option value="nutrition">Explain nutrition or substitutions</option><option value="shopping">Prepare a shopping list</option></select>',
       '<label for="kcp-question">Your question or meal description</label>',
-      '<textarea id="kcp-question" rows="4" maxlength="4000" placeholder="For example: I made chicken, rice, peppers and lemon. Turn that into a recipe."></textarea>',
+      '<textarea id="kcp-question" rows="5" maxlength="12000" placeholder="For example: I made chicken, rice, peppers and lemon. Turn that into a recipe."></textarea>',
       '<div class="kcp-note" style="margin-top:12px"><strong>Optional details to copy to ChatGPT</strong></div>',
-      '<label class="kcp-opt"><input id="kcp-favs" type="checkbox" checked> Favorites and reviewed meals</label>',
+      '<label class="kcp-opt"><input id="kcp-favs" type="checkbox"> Favorites and reviewed meals</label>',
       '<label class="kcp-opt"><input id="kcp-journal" type="checkbox"> Last 7 days of journal entries</label>',
       '<label class="kcp-opt"><input id="kcp-restaurants" type="checkbox"> Recent restaurant orders</label>',
       '<label class="kcp-opt"><input id="kcp-menu" type="checkbox"> Names of meals in my menu</label>',
+      '<label class="kcp-opt"><input id="kcp-preferences" type="checkbox"> Additional ingredients I avoid</label>',
       '</div><div><label for="kcp-preview">Preview of the exact text to copy</label>',
       '<textarea id="kcp-preview" readonly aria-label="ChatGPT prompt preview"></textarea>',
       '<p class="kcp-note">Nothing is transmitted automatically. You choose the optional details and paste the message into ChatGPT yourself.</p>',
       '</div></div><div class="kcp-actions">',
       '<button id="kcp-copy-open" type="button" class="button">Copy prompt &amp; open ChatGPT ↗</button>',
-      '<button id="kcp-copy" type="button" class="button secondary">Copy prompt only</button></div>',
+      '<button id="kcp-copy" type="button" class="button secondary">Copy prompt only</button>',
+      '<a id="kcp-open-link" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer" class="button secondary">Open ChatGPT ↗</a></div>',
       '<p id="kcp-status" role="status" class="kcp-note">The button copies your question but cannot submit it for you. In the new ChatGPT tab, open your Kitchen App Project and press Ctrl+V (Windows) or Cmd+V (Mac), then send. Replies stay in ChatGPT.</p>',
       '<details><summary>Keep your Kitchen rules in a ChatGPT Project</summary>',
       '<p class="kcp-note">Open the existing Kitchen App project in ChatGPT, then Project settings → Instructions, and paste these once. Personal ChatGPT accounts can use Projects.</p>',
@@ -102,45 +134,66 @@
     const layout=form.closest('.assistant-layout');
     if(layout){layout.insertAdjacentElement('afterend',p);layout.style.setProperty('display','none','important');layout.setAttribute('aria-hidden','true');}else form.insertAdjacentElement('afterend',p);
     p.querySelector('#kcp-project-text').value=PROJECT;
+    restoreDraft(p);
     preview();
   }
-  const clipboard=(text,onSuccess)=>{
-    const box=document.getElementById('kcp-preview');
-    if(navigator.clipboard?.writeText)navigator.clipboard.writeText(text).then(onSuccess).catch(()=>{
+  const clipboard=(text,fieldId,label)=>{
+    const fallback=()=>{
+      const box=document.getElementById(fieldId);
+      if(box)box.value=text;
       if(box){box.focus();box.select();}
-      status('Clipboard blocked. The prompt is selected. Press Ctrl+C (or Cmd+C) to copy it.',true);
-    });
-    else{
-      if(box){box.focus();box.select();}
-      status('Copy unavailable. Select the highlighted prompt with Ctrl+C or Cmd+C.',true);
-    }
+      status('Automatic copy was unavailable. The '+label+' are selected. Return to this page if needed and press Ctrl+C (Windows) or Cmd+C (Mac) to copy them. Nothing has been sent.',true);
+      return false;
+    };
+    try{
+      if(navigator.clipboard?.writeText)return Promise.resolve(navigator.clipboard.writeText(text)).then(()=>true,fallback);
+    }catch(_){return Promise.resolve(fallback());}
+    return Promise.resolve(fallback());
   };
-  document.addEventListener('input',e=>{if(e.target?.closest?.('#kitchen-chatgpt-personal')||e.target?.id==='assistant-question')preview();});
+  document.addEventListener('input',e=>{if(e.target?.closest?.('#kitchen-chatgpt-personal')){readDraft();preview();}});
   document.addEventListener('change',e=>{
     if(e.target?.id==='kcp-task'){const q=document.getElementById('kcp-question');if(q&&(!q.value||Object.values(PREFILL).includes(q.value)))q.value=PREFILL[e.target.value]||'';}
-    if(e.target?.closest?.('#kitchen-chatgpt-personal'))preview();
+    if(e.target?.closest?.('#kitchen-chatgpt-personal')){readDraft();preview();}
   });
   document.addEventListener('click',e=>{
     const b=e.target?.closest?.('button');if(!b)return;
     if(b.id==='kcp-copy'||b.id==='kcp-copy-open'){
       e.preventDefault();const t=document.getElementById('kcp-task'),q=document.getElementById('kcp-question');
-      if(t?.value==='general'&&!q?.value.trim()&&!document.getElementById('assistant-question')?.value.trim()){
+      if(t?.value==='general'&&!q?.value.trim()){
         status('Enter a question or choose a task above.',true);q?.focus();return;
       }
-      const prompt=context();preview();
+      readDraft();const prompt=context();preview();
       // Start copying while this page still has focus; opening a tab first
       // can cause browser clipboard permissions to reject the write.
-      clipboard(prompt,()=>status((b.id==='kcp-copy-open'?'Prompt copied; ChatGPT opened.':'Prompt copied.')+' Paste with Ctrl+V or Cmd+V and send it.'));
+      clipboard(prompt,'kcp-preview','prompt contents').then(copied=>{
+        if(!copied)return;
+        status(b.id==='kcp-copy-open'
+          ? 'Prompt copied. Use the new ChatGPT tab or the Open ChatGPT link, then paste with Ctrl+V or Cmd+V and send. Nothing has been sent yet; replies stay in ChatGPT.'
+          : 'Prompt copied. Paste it into ChatGPT and send it there. Nothing has been sent yet; replies stay in ChatGPT.');
+      });
       if(b.id==='kcp-copy-open')window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
     }
     if(b.id==='kcp-copy-project'){
-      e.preventDefault();clipboard(PROJECT,()=>status('Project instructions copied. Paste into ChatGPT Project settings.'));
+      e.preventDefault();clipboard(PROJECT,'kcp-project-text','Project instructions').then(copied=>{if(copied)status('Project instructions copied. Paste them into your ChatGPT Project settings.');});
     }
   });
   let pending=false;
   const schedule=()=>{if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;mount();});};
+  window.KitchenChatGPTBridge={
+    prepareTask({task='general',question}={}){
+      if(typeof question!=='string')return false;
+      readDraft();
+      draft={task:Object.hasOwn(PREFILL,task)?task:'general',question,options:{...draft.options}};
+      saveDraft();
+      const p=document.getElementById('kitchen-chatgpt-personal');
+      if(p){restoreDraft(p);preview();status('Your description is ready to review. Nothing has been sent.');}
+      location.hash='#/assistant';schedule();
+      return true;
+    }
+  };
   const main=document.getElementById('main');
   if(main)new MutationObserver(schedule).observe(main,{childList:true});
   window.addEventListener('hashchange',schedule);
   schedule();
 })();
+

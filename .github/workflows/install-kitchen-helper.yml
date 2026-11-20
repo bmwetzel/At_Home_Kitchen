@@ -1,11 +1,11 @@
-name: Install hosted Kitchen Helper
+name: Build and verify Kitchen app
 on:
   push:
     paths:
       - "site/kitchen-assistant-local.js"
       - "site/kitchen-chatgpt-personal-bridge.js"
-      - "scripts/test-hosted-assistant.js"
-      - "scripts/inject_hosted_assistant.py"
+      - "source/**"
+      - "scripts/**"
       - ".github/workflows/install-kitchen-helper.yml"
   workflow_dispatch:
 permissions:
@@ -18,23 +18,30 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: true
-      - name: Check Kitchen Assistant JavaScript
+      - name: Check Kitchen JavaScript
         run: |
           node --check site/kitchen-assistant-local.js
           node --check site/kitchen-chatgpt-personal-bridge.js
-      - name: Test question relevance and subscription handoff
-        run: node scripts/test-hosted-assistant.js
-      - name: Insert both assistants into HTML
+          node --check source/app.js
+          node --check source/personalization-rules.js
+          node --check source/journal-customizations.js
+      - name: Build the hosted app
         run: python3 scripts/inject_hosted_assistant.py
-      - name: Commit updated website if needed
+      - name: Verify journal and assistant behavior
+        run: |
+          node scripts/test-hosted-assistant.js
+          node scripts/test-chatgpt-bridge.cjs
+          node scripts/test-journal-customizations.cjs
+      - name: Commit verified website if needed
         shell: bash
         run: |
           if git diff --quiet -- site/index.html; then
-            echo "Both assistant scripts are already present."
+            echo "The hosted app is already current."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add site/index.html
-          git commit -m "Connect personal ChatGPT handoff to Kitchen Assistant"
+          git commit -m "Build recipe-specific journal options and assistant fixes"
           git push origin HEAD:main
+

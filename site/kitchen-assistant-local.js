@@ -1,6 +1,7 @@
 /* At-Home Kitchen browser-local assistant: no account credentials or API charges. */
 (function () {
   "use strict";
+  if (['127.0.0.1','localhost','[::1]'].includes(location.hostname)) return;
   var D = window.KITCHEN_DATA;
   if (!D || !Array.isArray(D.meals)) return;
   var F = "at-home-kitchen:v1", P = "at-home-kitchen:personal:v3";
@@ -91,6 +92,10 @@
   }
   function ask(q) { if (!q.trim()) return; addMessage("user", q); var a = respond(q); addMessage("assistant", a.message, a.items, a.link); }
   function handoff(q) {
+    if (window.KitchenChatGPTBridge && window.KitchenChatGPTBridge.prepareTask) {
+      window.KitchenChatGPTBridge.prepareTask({ task: /weekly.*review/i.test(q) ? 'weekly' : 'general', question: q });
+      return;
+    }
     var t = document.getElementById("kcp-question");
     if (!t) { addMessage("assistant", "Open the personal ChatGPT panel to prepare this question."); return; }
     t.value = q;
@@ -112,14 +117,7 @@
       var go = document.createElement("a"); go.href = "https://chatgpt.com/"; go.target = "_blank"; go.rel = "noopener noreferrer"; go.className = "button secondary small"; go.textContent = "Open ChatGPT ↗"; row.appendChild(go);
       form.appendChild(row);
     }
-    var settings = document.querySelector(".settings-grid");
-    if (settings && !settings.dataset.hosted) {
-      var panels = Array.from(settings.querySelectorAll(".settings-panel"));
-      var c = panels.find(x => (x.querySelector("h2") || {}).textContent === "ChatGPT Plan Connection");
-      if (c) { var notice = document.createElement("div"); notice.className = "notice"; notice.textContent = "Public website: Your ChatGPT plan is not connected here. Hosted subscription use requires separate authorization for this app. The browser-local helper works without signing in."; c.prepend(notice); }
-      settings.dataset.hosted = "yes";
-    }
-    var review = document.querySelector('[data-k="ai-review"]'); if (review) review.textContent = "Ask Kitchen Helper";
+    var review = document.querySelector('[data-k="ai-review"]'); if (review) review.textContent = "Prepare ChatGPT review";
   }
   document.addEventListener("submit", function(e) {
     if (e.target.id !== "assistant-form") return;
@@ -160,3 +158,4 @@
   window.addEventListener("hashchange", () => setTimeout(syncUI, 0));
   syncUI();
 })();
+

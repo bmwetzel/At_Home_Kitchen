@@ -47,3 +47,4 @@ assert(bridge.includes("layout.style.setProperty('display','none','important')")
 assert(!bridge.includes("document.getElementById('assistant-question')?.value.trim()||"),"Bridge must not silently use stale legacy question");
 assert(bridge.indexOf("clipboard(prompt,") < bridge.indexOf("if(b.id==='kcp-copy-open')window.open("),"Copy must be attempted before focus changes");
 console.log("PASS: keyword replies are relevant or explicitly limited; personal ChatGPT handoff is primary and copies before opening.");
+
